@@ -106,7 +106,7 @@ fn parse_input() -> (HashMap<String, FieldRule>, Ticket, Vec<Ticket>) {
 
 	let mut fields = HashMap::<String, FieldRule>::new();
 
-	let file_backing = std::fs::read_to_string("inputs/iday16p1.txt").unwrap();
+	let file_backing = std::fs::read_to_string("inputs/i20day16p1.txt").unwrap();
 	let file         = file_backing.lines();
 
 	let mut first_section  = Vec::<String>::new();
@@ -223,7 +223,7 @@ mod day16tests {
 
 		let mut buf = Vec::new();
 
-		let (fields, your_ticket, other_tickets) = crate::day16::parse_input();
+		let (fields, your_ticket, other_tickets) = crate::aoc2020::day16::parse_input();
 
 		let mut field_vec: Vec<(String, (u32, u32, u32, u32))> = fields.into_iter().collect();
 		field_vec.sort_unstable_by(|x, y| { x.0.cmp(&y.0) });
