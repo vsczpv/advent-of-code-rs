@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: 0BSD */
+
 use crate::common::Part;
 
 use std::collections::HashMap;

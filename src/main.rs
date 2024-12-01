@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: 0BSD */
+
 use std::env;
 mod common;
 mod aoc2020;

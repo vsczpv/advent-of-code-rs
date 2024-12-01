@@ -1,5 +1,5 @@
 [package]
-name = "new-advent-of-code"
+name = "vsczpv-advent-of-code-rs"
 version = "0.1.0"
 edition = "2021"
 
