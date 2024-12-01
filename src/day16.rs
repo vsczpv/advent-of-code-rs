@@ -7,33 +7,92 @@ const TICKET_LENGTH: usize = 20usize;
 type Ticket = [u32; TICKET_LENGTH];
 type FieldRule = (u32,u32,u32,u32);
 
-pub fn main(_part: Part) {
+pub fn main(part: Part) {
 
 	/* Get data from input file */
-	let (fields, _your_ticket, other_tickets) = parse_input();
+	let (rules, your_ticket, other_tickets) = parse_input();
 
-	let mut invalid_tickets = Vec::new();
+	if part == Part::One {
 
-	/* Find invalid tickets and the offending field */
+		let mut invalid_tickets = Vec::new();
+
+		/* Find invalid tickets and the offending field */
+		for ticket in other_tickets {
+			if let Some(violator) = is_ticket_invalid(&rules, ticket) {
+				invalid_tickets.push(violator);
+			}
+		}
+
+		/* Get their sum */
+		let sum: u32 = invalid_tickets.iter().sum();
+		println!("ticket scanning error rate is {sum}");
+
+		return;
+	}
+
+	let other_tickets: Vec<_> = other_tickets.into_iter().filter(|ticket| {
+		match is_ticket_invalid(&rules, *ticket) {
+			Some(_) => false,
+			None    => true
+		}
+	}).collect();
+
+	let mut match_matrix = vec![(vec![true; rules.len()], rules.len()); TICKET_LENGTH];
+
+	let fixed_order_rules: Vec<_> = rules.iter().collect();
+
 	for ticket in other_tickets {
-		if let Some(violator) = is_ticket_valid(&fields, ticket) {
-			invalid_tickets.push(violator);
+		for (i, field) in ticket.iter().enumerate() {
+			for (j, rule) in fixed_order_rules.iter().enumerate() {
+				if !is_value_within_rule(&rule.1, *field) {
+					match_matrix[i].0[j] = false;
+					match_matrix[i].1   -= 1;
+				}
+			}
 		}
 	}
 
-	/* Get their sum */
-	let sum: u32 = invalid_tickets.iter().sum();
-	println!("ticket scanning error rate is {sum}");
+	let mut result = 1u128;
+
+	for _i in 0..match_matrix.len() {
+		let mut next_idx = 0;
+		'search: for (j, mtch) in match_matrix.iter().enumerate() {
+			if mtch.1 == 1 {
+				for (k, rule) in fixed_order_rules.iter().enumerate() {
+					if mtch.0[k] == true {
+						if rule.0.contains("departure") {
+							result *= your_ticket[j] as u128;
+						}
+						next_idx = k;
+						break 'search;
+					}
+				}
+				break;
+			}
+		}
+		for mtch in &mut match_matrix {
+			mtch.0[next_idx] = false;
+			if mtch.1 != 0 {
+				mtch.1 -= 1;
+			}
+		}
+	}
+
+	println!("final result is {result}");
+
 }
 
-fn is_ticket_valid(field_rules: &HashMap<String, FieldRule>, ticket: Ticket) -> Option<u32> {
+fn is_value_within_rule(rule: &FieldRule, field: u32) -> bool {
+	(field >= rule.0 && field <= rule.1) ||
+	(field >= rule.2 && field <= rule.3)
+}
+
+fn is_ticket_invalid(field_rules: &HashMap<String, FieldRule>, ticket: Ticket) -> Option<u32> {
 
 	for field in ticket {
 		let mut succeded: bool = false;
 		for rule in field_rules.values() {
-			let valid: bool = (field >= rule.0 && field <= rule.1) ||
-			                  (field >= rule.2 && field <= rule.3);
-			succeded |= valid;
+			succeded |= is_value_within_rule(rule, field);
 		}
 		if succeded == false {
 			return Some(field);
