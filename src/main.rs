@@ -1,6 +1,7 @@
 use std::env;
 mod common;
 mod day15;
+mod day16;
 
 use crate::common::Part;
 
@@ -10,6 +11,8 @@ fn main() {
     match day.as_str() {
         "day15p1" => day15::main(Part::One),
         "day15p2" => day15::main(Part::Two),
+        "day16p1" => day16::main(Part::One),
+        "day16p2" => day16::main(Part::Two),
         _         => println!("Non-existent day.")
     }
 }
