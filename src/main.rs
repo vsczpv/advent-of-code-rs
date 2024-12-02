@@ -21,6 +21,8 @@ fn main() {
         "20day18p2" => aoc2020::day18::main(Part::Two),
         "24day01p1" => aoc2024::day01::main(Part::One),
         "24day01p2" => aoc2024::day01::main(Part::Two),
+        "24day02p1" => aoc2024::day02::main(Part::One),
+        "24day02p2" => aoc2024::day02::main(Part::Two),
         _         => println!("Non-existent day.")
     }
 }
