@@ -6,7 +6,7 @@ const CWN_WIDTH: usize = 20;
 
 pub fn main(part: Part) {
 
-	let mut cwn = Conway3D::new(CWN_WIDTH);
+	let mut cwn = Conway4D::new(CWN_WIDTH);
 
 	assert_ne!(part, Part::One, "Part one is irrelevant.");
 
@@ -60,13 +60,13 @@ pub fn main(part: Part) {
 	println!("final result is {}", cwn.count());
 }
 
-struct Conway3D {
+struct Conway4D {
 //	cells: Vec<Vec<Vec<bool>>>,
 	cells: Vec<Vec<Vec<Vec<bool>>>>, /* Holy baloney! */
 	width: usize
 }
 
-impl Conway3D {
+impl Conway4D {
 	fn new(width: usize) -> Self {
 		Self {
 			cells: vec![vec![vec![vec![false; width*2]; width*2]; width*2]; width*2],
