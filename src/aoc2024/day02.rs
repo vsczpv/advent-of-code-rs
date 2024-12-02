@@ -29,7 +29,7 @@ fn count_outliers(rpr: &Vec<i32>) -> i32 {
 	let direction = outliers[0].signum();
 
 	/*
-	 * Count how many steps are too step/backwards.
+	 * Count how many steps are too steep/backwards.
 	 */
 	let outliers: i32 =
 		outliers
