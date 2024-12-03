@@ -9,18 +9,102 @@ use regex::Regex;
 
 pub fn main(part: Part) {
 
+	let file = std::fs::read_to_string("inputs/i20day18p1.txt").unwrap();
+
 	match part {
-		Part::One => parse_input_pt1(),
-		Part::Two => parse_input_pt2()
+		Part::One => parse_input_pt1(file),
+		Part::Two => parse_input_pt2(file)
 	}
 }
 
-fn parse_input_pt2() {}
+/*
+ * The Fortran I compiler would expand each operator with a sequence of parentheses. In a simplified form of the algorithm, it would
+ *
+ *     replace + and – with ))+(( and ))-((, respectively;
+ *     replace * and / with )*( and )/(, respectively;
+ *     add (( at the beginning of each expression and after each left parenthesis in the original expression; and
+ *     add )) at the end of the expression and before each right parenthesis in the original expression.
+ *
+ * Although not obvious, the algorithm was correct, and, in the words of Knuth, “The resulting formula is
+ * properly parenthesized, believe it or not.”
+ *
+ * Wikipedia, the free encyclopedia.
+ *
+ * Obviously, we're goint to invert the precedences.
+ */
+fn parse_input_pt2(file: String) {
 
-fn parse_input_pt1() {
+	let mut newexpr = String::from("");
+	for line in file.lines() {
 
-	let file_backing = std::fs::read_to_string("inputs/i20day18p1.txt").unwrap();
-	let file         = file_backing.lines();
+		let mut knuth = String::from("((");
+		for chr in line.chars() {
+			match chr {
+				'(' => knuth.push_str("((("),
+				')' => knuth.push_str(")))"),
+				'+' => knuth.push_str(")+("),
+				'*' => knuth.push_str("))*(("),
+				' ' => {},
+				_   => knuth.push_str(chr.to_string().as_str())
+			}
+		}
+		knuth.push_str("))");
+
+		let mut pruned_knuth = knuth.clone();
+		let mut drop_phase = 0;
+
+		/*
+		 * Our part one parser doesn't fair well with lone values inside parethesis, so
+		 * we prune 'em. Wouldn't be necessary if we modified the parser, but I don't
+		 * want to as this is a lot easier.
+		 */
+		loop {
+
+			knuth = pruned_knuth.clone();
+			pruned_knuth.clear();
+			knuth.push_str("@@");
+
+			for i in 0..(knuth.len() - 2usize) {
+
+				let a = knuth.chars().nth(i+0).unwrap();
+				let b = knuth.chars().nth(i+1).unwrap();
+				let c = knuth.chars().nth(i+2).unwrap();
+
+				match drop_phase {
+					0 => {
+						if a == '(' && b.is_digit(10) && c == ')' {
+							drop_phase = 1;
+						} else {
+							pruned_knuth.push(a);
+						}
+					},
+					1 => {
+						pruned_knuth.push(a);
+						drop_phase = 2;
+					},
+					2 => {
+						drop_phase = 0;
+					}
+					_ => panic!()
+				};
+
+			}
+
+			knuth.pop();
+			knuth.pop();
+
+			if knuth == pruned_knuth { break; }
+
+		};
+
+		newexpr.push_str(knuth.as_str());
+		newexpr.push('\n');
+	}
+
+	parse_input_pt1(newexpr);
+}
+
+fn parse_input_pt1(file: String) {
 
 	#[derive(Copy, Clone, Debug)]
 	enum State {
@@ -34,7 +118,7 @@ fn parse_input_pt1() {
 
 	let mut sum = 0i64;
 
-	for line in file {
+	for line in file.lines() {
 		let mut expression_stack = LinkedList::<ExpressionBuilder>::new();
 		let mut current_expr     = ExpressionBuilder::new();
 		let mut built_expr       = Expression::default();
@@ -42,6 +126,7 @@ fn parse_input_pt1() {
 
 		let matches: Vec<_> = regex.find_iter(line).map(|x| { x.as_str() }).collect();
 
+		/* State machine! */
 		for mtch in matches {
 			match mtch {
 				"(" => {
@@ -229,10 +314,3 @@ impl ExpressionBuilder {
 		}
 	}
 }
-
-/*
-enum EitherExpr {
-	Partial(ExpressionBuilder),
-	Full(Expression)
-}
-*/
