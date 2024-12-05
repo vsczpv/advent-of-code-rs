@@ -19,6 +19,8 @@ fn main() {
         "20day17p2" => aoc2020::day17::main(Part::Two),
         "20day18p1" => aoc2020::day18::main(Part::One),
         "20day18p2" => aoc2020::day18::main(Part::Two),
+        "20day19p1" => aoc2020::day19::main(Part::One),
+        "20day19p2" => aoc2020::day19::main(Part::Two),
         "24day01p1" => aoc2024::day01::main(Part::One),
         "24day01p2" => aoc2024::day01::main(Part::Two),
         "24day02p1" => aoc2024::day02::main(Part::One),
