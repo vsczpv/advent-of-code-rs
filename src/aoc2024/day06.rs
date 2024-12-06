@@ -3,6 +3,8 @@
 use crate::common::Part;
 use phf::phf_map;
 
+use std::collections::HashSet;
+
 pub fn main(_part: Part) {
 
 	let file = std::fs::read_to_string("inputs/i24day06p1.txt").unwrap();
@@ -72,7 +74,7 @@ pub fn main(_part: Part) {
 		}
 	}
 
-	let mut moves: Vec<Move> = Vec::new();
+	let mut moves: HashSet<Move> = HashSet::new();
 	let mut count = 0;
 
 	for can in candidates {
@@ -84,9 +86,7 @@ pub fn main(_part: Part) {
 		let cycles = loop {
 			let guard = new_grid[where_y][where_x];
 
-			moves.push(Move::new(guard, where_x, where_y));
-
-			if cyclecheck(&moves) {
+			if !moves.insert(Move::new(guard, where_x, where_y)) {
 				break true;
 			}
 
@@ -116,7 +116,7 @@ pub fn main(_part: Part) {
 	println!("(part2) final result is {count}");
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Hash)]
 struct Move {
 	guard: char,
 	x:     usize,
@@ -125,22 +125,6 @@ struct Move {
 
 impl Move {
 	fn new(guard: char, x: usize, y: usize) -> Self { Self { guard, x, y } }
-}
-
-fn cyclecheck(data: &Vec<Move>) -> bool {
-
-	let l = data.len();
-	for w in 1..(l/2+1) {
-		let a = &data.as_slice()[l-w..l];
-		let b = &data.as_slice()[l-w*2..l-w];
-		let mut equal = true;
-		for i in 0..w {
-			if a[i] != b[i] { equal = false; break; }
-		}
-		if equal { return true; }
-	}
-
-	return false;
 }
 
 fn printgrid(grid: &Vec<Vec<char>>) {
