@@ -3,7 +3,13 @@
 use crate::common::Part;
 use phf::phf_map;
 
-use std::collections::HashSet;
+const WALL_ID     : u8 = 0b11111111u8;
+const U_MASK      : u8 = 0b1000u8;
+const R_MASK      : u8 = 0b0100u8;
+const D_MASK      : u8 = 0b0010u8;
+const L_MASK      : u8 = 0b0001u8;
+const GUARD_SHIFT : u8 = 4u8;
+const VISIT_MASK  : u8 = 0b1111u8;
 
 pub fn main(_part: Part) {
 
@@ -54,7 +60,6 @@ pub fn main(_part: Part) {
 			grid[where_y][where_x] = guard;
 		}
 	}
-	printgrid(&grid);
 
 	let count: i32 =
 		grid
@@ -74,66 +79,98 @@ pub fn main(_part: Part) {
 		}
 	}
 
-	let mut moves: HashSet<Move> = HashSet::new();
 	let mut count = 0;
 
+	let starting_grid: Vec<Vec<u8>> =
+		starting_grid
+			.iter()
+			.map(|x| { x.iter().map(|y| {
+				match y {
+					'#' => WALL_ID,
+					'^' => U_MASK << GUARD_SHIFT,
+					'.' => 0u8,
+					 _  => panic!("impossible scenario, {y}")
+				}
+			}).collect()})
+			.collect();
+
+	let delta_m_u8 = |i: u8| -> (isize, isize) {
+		match i {
+			U_MASK => ( 0, -1),
+			R_MASK => ( 1,  0),
+			D_MASK => ( 0,  1),
+			L_MASK => (-1,  0),
+			_      => panic!("")
+		}
+	};
+
+	let mut new_grid = starting_grid.clone();
+
 	for can in candidates {
-		let mut new_grid = starting_grid.clone();
+
 		if can.1 == start_y && can.0 == start_x { continue; }
-		new_grid[can.1][can.0] = '#';
+
+		new_grid[can.1][can.0] = WALL_ID;
 		where_x = start_x;
 		where_y = start_y;
-		let cycles = loop {
-			let guard = new_grid[where_y][where_x];
 
-			if !moves.insert(Move::new(guard, where_x, where_y)) {
+		let cycles = loop {
+
+			let mut guard = new_grid[where_y][where_x] >> GUARD_SHIFT;
+
+			if (guard & (new_grid[where_y][where_x] & VISIT_MASK)) != 0 {
 				break true;
 			}
 
-			let dm = DELTA_M.get(&guard).unwrap();
+			let dm = delta_m_u8(guard);
 
-			let next = (where_x as isize + dm.0, where_y as isize + dm.1);
-			let (next_x, next_y) = (next.0 as usize, next.1 as usize);
+			let (next_x, next_y) = (where_x as isize + dm.0, where_y as isize + dm.1);
+			let (next_x, next_y) = (next_x  as usize,        next_y  as usize);
 
-			if !boundscheck(next_x, next_y, &new_grid) { break false; }
+			if !boundscheck_u8(next_x, next_y, &new_grid) { break false; }
+
 			let next = new_grid[next_y][next_x];
 
-			if next == '#' {
-				new_grid[where_y][where_x] = turn(guard);
-			} else {
-				where_x = next_x;
-				where_y = next_y;
-				new_grid[where_y][where_x] = guard;
-			}
+			let mut iterate = |shall_move: bool| {
+				let old = new_grid[where_y][where_x];
+				let old = (old & VISIT_MASK) | (old >> GUARD_SHIFT);
+				new_grid[where_y][where_x] = old;
+				if shall_move {
+					where_x = next_x;
+					where_y = next_y;
+				} else {
+					guard = turn_u8(guard);
+				}
+				new_grid[where_y][where_x] |= guard << GUARD_SHIFT;
+			};
+
+			iterate(next != WALL_ID);
+
 		};
+
 		if cycles {
-			println!("loops at {} {}", can.0, can.1);
 			count += 1;
 		}
-		moves.clear();
+
+		/* Clear Grid */
+		new_grid
+			.iter_mut()
+			.enumerate()
+			.for_each(|(i, x)| {
+				x.copy_from_slice(starting_grid[i].as_slice())
+			});
 	}
 
 	println!("(part2) final result is {count}");
 }
 
-#[derive(PartialEq, Eq, Debug, Hash)]
-struct Move {
-	guard: char,
-	x:     usize,
-	y:     usize
-}
-
-impl Move {
-	fn new(guard: char, x: usize, y: usize) -> Self { Self { guard, x, y } }
-}
-
-fn printgrid(grid: &Vec<Vec<char>>) {
-	for line in grid {
-		for col in line {
-			print!("{col}");
+fn boundscheck_u8(x: usize, y: usize, grid: &Vec<Vec<u8>>) -> bool {
+	if y < grid.len() {
+		if x < grid[0].len() {
+			return true;
 		}
-		println!("");
 	}
+	return false;
 }
 
 fn boundscheck(x: usize, y: usize, grid: &Vec<Vec<char>>) -> bool {
@@ -143,6 +180,16 @@ fn boundscheck(x: usize, y: usize, grid: &Vec<Vec<char>>) -> bool {
 		}
 	}
 	return false;
+}
+
+fn turn_u8(guard: u8) -> u8 {
+	match guard {
+		U_MASK => R_MASK,
+		R_MASK => D_MASK,
+		D_MASK => L_MASK,
+		L_MASK => U_MASK,
+		 _  => panic!()
+	}
 }
 
 fn turn(guard: char) -> char {
