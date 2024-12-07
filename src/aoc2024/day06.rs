@@ -3,6 +3,10 @@
 use crate::common::Part;
 use phf::phf_map;
 
+use std::sync::Arc;
+use std::sync::mpsc;
+use std::thread;
+
 const WALL_ID     : u8 = 0b11111111u8;
 const U_MASK      : u8 = 0b1000u8;
 const R_MASK      : u8 = 0b0100u8;
@@ -79,7 +83,7 @@ pub fn main(_part: Part) {
 		}
 	}
 
-	let mut count = 0;
+	let candidates = Arc::new(candidates);
 
 	let starting_grid: Vec<Vec<u8>> =
 		starting_grid
@@ -94,76 +98,103 @@ pub fn main(_part: Part) {
 			}).collect()})
 			.collect();
 
-	let delta_m_u8 = |i: u8| -> (isize, isize) {
-		match i {
-			U_MASK => ( 0, -1),
-			R_MASK => ( 1,  0),
-			D_MASK => ( 0,  1),
-			L_MASK => (-1,  0),
-			_      => panic!("")
-		}
-	};
+	let thread_count = 4;
 
-	let mut new_grid = starting_grid.clone();
+	let (tx, rx) = mpsc::channel();
 
-	for can in candidates {
+	let candidates: Vec<Vec<_>> = candidates.chunks(candidates.len()/thread_count).map(|s| s.into()).collect();
 
-		if can.1 == start_y && can.0 == start_x { continue; }
+	for thread_id in 0..thread_count {
+		let new_grid = starting_grid.clone();
+		make_thread(candidates[thread_id].clone(), start_x, start_y, new_grid, tx.clone());
+	}
 
-		new_grid[can.1][can.0] = WALL_ID;
-		where_x = start_x;
-		where_y = start_y;
-		new_grid[where_y][where_x] = U_MASK << GUARD_SHIFT;
+	drop(tx);
 
-		let cycles = loop {
-
-			let mut guard = new_grid[where_y][where_x] >> GUARD_SHIFT;
-
-			if (guard & (new_grid[where_y][where_x] & VISIT_MASK)) != 0 {
-				break true;
-			}
-
-			let dm = delta_m_u8(guard);
-
-			let (next_x, next_y) = (where_x as isize + dm.0, where_y as isize + dm.1);
-			let (next_x, next_y) = (next_x  as usize,        next_y  as usize);
-
-			if !boundscheck_u8(next_x, next_y, &new_grid) { break false; }
-
-			let next = new_grid[next_y][next_x];
-
-			let mut iterate = |shall_move: bool| {
-				let old = new_grid[where_y][where_x];
-				let old = (old & VISIT_MASK) | (old >> GUARD_SHIFT);
-				new_grid[where_y][where_x] = old;
-				if shall_move {
-					where_x = next_x;
-					where_y = next_y;
-				} else {
-					guard = turn_u8(guard);
-				}
-				new_grid[where_y][where_x] |= guard << GUARD_SHIFT;
-			};
-
-			iterate(next != WALL_ID);
-
-		};
-
-		if cycles {
-			count += 1;
-		}
-
-		/* Clear Grid */
-		new_grid[where_y][where_x] = 0u8;
-		new_grid
-			.iter_mut()
-			.for_each(|x| {
-				x.iter_mut().for_each(|y| { *y = (*y >> 7) * WALL_ID /* *y = if *y == WALL_ID { *y } else { 0u8 }*/ });
-			});
-		new_grid[can.1][can.0] = 0u8;
+	let mut count = 0;
+	for msg in rx {
+		count += msg;
 	}
 
 	println!("(part2) final result is {count}");
+}
+
+fn delta_m_u8(i: u8) -> (isize, isize) {
+	match i {
+		U_MASK => ( 0, -1),
+		R_MASK => ( 1,  0),
+		D_MASK => ( 0,  1),
+		L_MASK => (-1,  0),
+		_      => panic!("")
+	}
+}
+
+fn make_thread(candidates: /*Arc<Vec<(usize, usize)>>*/ Vec<(usize, usize)>, start_x: usize, start_y: usize,
+			   mut new_grid: Vec<Vec<u8>>, tx: std::sync::mpsc::Sender<i32>) {
+	thread::spawn(move || {
+
+		let mut count = 0;
+
+		for can in candidates {
+
+			if can.1 == start_y && can.0 == start_x { continue; }
+
+			new_grid[can.1][can.0] = WALL_ID;
+			let mut where_x = start_x;
+			let mut where_y = start_y;
+			new_grid[where_y][where_x] = U_MASK << GUARD_SHIFT;
+
+			let cycles = loop {
+
+				let mut guard = new_grid[where_y][where_x] >> GUARD_SHIFT;
+
+				if (guard & (new_grid[where_y][where_x] & VISIT_MASK)) != 0 {
+					break true;
+				}
+
+				let dm = delta_m_u8(guard);
+
+				let (next_x, next_y) = (where_x as isize + dm.0, where_y as isize + dm.1);
+				let (next_x, next_y) = (next_x  as usize,        next_y  as usize);
+
+				if !boundscheck_u8(next_x, next_y, &new_grid) { break false; }
+
+				let next = new_grid[next_y][next_x];
+
+				let mut iterate = |shall_move: bool| {
+					let old = new_grid[where_y][where_x];
+					let old = (old & VISIT_MASK) | (old >> GUARD_SHIFT);
+					new_grid[where_y][where_x] = old;
+					if shall_move {
+						where_x = next_x;
+						where_y = next_y;
+					} else {
+						guard = turn_u8(guard);
+					}
+					new_grid[where_y][where_x] |= guard << GUARD_SHIFT;
+				};
+
+				iterate(next != WALL_ID);
+
+			};
+
+			if cycles {
+				count += 1;
+			}
+
+			/* Clear Grid */
+			new_grid[where_y][where_x] = 0u8;
+			new_grid
+				.iter_mut()
+				.for_each(|x| {
+					x.iter_mut().for_each(|y| { *y = (*y >> 7) * WALL_ID /* *y = if *y == WALL_ID { *y } else { 0u8 }*/ });
+				});
+			new_grid[can.1][can.0] = 0u8;
+		}
+
+		tx.send(count)
+			.expect("Unable to send over channel.");
+	});
 }
 
 fn boundscheck_u8(x: usize, y: usize, grid: &Vec<Vec<u8>>) -> bool {
