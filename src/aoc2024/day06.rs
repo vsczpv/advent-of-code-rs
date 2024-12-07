@@ -113,6 +113,7 @@ pub fn main(_part: Part) {
 		new_grid[can.1][can.0] = WALL_ID;
 		where_x = start_x;
 		where_y = start_y;
+		new_grid[where_y][where_x] = U_MASK << GUARD_SHIFT;
 
 		let cycles = loop {
 
@@ -153,12 +154,13 @@ pub fn main(_part: Part) {
 		}
 
 		/* Clear Grid */
+		new_grid[where_y][where_x] = 0u8;
 		new_grid
 			.iter_mut()
-			.enumerate()
-			.for_each(|(i, x)| {
-				x.copy_from_slice(starting_grid[i].as_slice())
+			.for_each(|x| {
+				x.iter_mut().for_each(|y| { *y = (*y >> 7) * WALL_ID /* *y = if *y == WALL_ID { *y } else { 0u8 }*/ });
 			});
+		new_grid[can.1][can.0] = 0u8;
 	}
 
 	println!("(part2) final result is {count}");
