@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: 0BSD */
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Part {
 	One,
 	Two
